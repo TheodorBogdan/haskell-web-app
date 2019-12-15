@@ -1,0 +1,11 @@
+.delete-button {
+    border-radius: 5px;
+    background: #b34444;
+    color: white;
+    width: 35px;
+    height: 35px;
+    text-align: center;
+}
+.delete-button::after {
+    content:"X";
+}
