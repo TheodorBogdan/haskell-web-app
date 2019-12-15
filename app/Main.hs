@@ -62,7 +62,7 @@ app = do
                                 , type_ "text/css"
                                 , href_ "/main.css"
                                 ]
-                h1_ "Hello!"
+                h1_ "Books list"
                 ul_ $ forM_ books' $ \book -> li_ $ do
                     toHtml (show (bookId book))
                     ":"
