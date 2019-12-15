@@ -17,10 +17,6 @@ import Data.Semigroup ((<>))
 import Data.IORef
 import Data.Text (Text, pack, append)
 
--- data MySession = EmptySession
--- data MyAppState = DummyAppState (IORef Int)
-
--- data Comment = Comment { author :: Text, message :: Text }
 data Book = Book { bookId :: Integer, author :: Text, title :: Text }
 
 newtype ServerState = ServerState { books :: IORef [Book] }
@@ -32,6 +28,26 @@ findBookById :: Integer -> [Book] -> Book
 findBookById i (x: xs)
     | (bookId x) == i  = x
     | otherwise = findBookById i xs
+
+removeItem :: Integer -> [Book] -> [Book]
+removeItem _ []                 = []
+removeItem id (y:ys) | id == (bookId y)    = removeItem id ys
+                     | otherwise = y : removeItem id ys
+
+-- updateBook :: Integer -> Book -> [Book] -> [Book]
+-- updateBook bookIdParam myBook books = 
+--     let update p | bookId p == bookIdParam = p { title = title myBook, author = author myBook }
+--                  | otherwise = p
+--     in map update books
+ 
+update ::  Integer -> Book -> [Book] -> [Book]
+update bookIdParam myBook books = 
+    case books of
+       []     -> []
+       (p:ps) | bookId p == bookIdParam ->
+                     p { title = title myBook, author = author myBook } : ps
+              | otherwise ->
+                     p : update bookIdParam myBook ps
 
 newUUID :: IO UUID
 newUUID = randomIO
@@ -53,7 +69,7 @@ app = do
                     toHtml (author book)
                     ":"
                     toHtml (title book)
-                    a_ [href_ "/", class_ "button delete-button"] "" :: Html()
+                    a_ [href_ ( append "delete/" ( pack (show (bookId book)))), class_ "button delete-button"] "" :: Html()
                     a_ [href_ ( append "editBook/" ( pack (show (bookId book)))), class_ "button"] "+" :: Html()
                 a_ [ href_ "addBook"] "Add Books" :: Html ()
         get ("editBook" <//> var) $ \varId -> do
@@ -72,13 +88,17 @@ app = do
                         input_ [name_ "title", value_ (title theBook)]
                     input_ [ type_ "submit", value_ "Confirm"] 
                 a_ [ href_ "/"] "Books list" :: Html ()
-        post ("editBook") $ do
-            -- bookId <- param' "bookId"
-            -- author <- param' "author"
-            -- title <- param' "title"
-            -- booksRef <- books <$> getState
-            -- liftIO $ atomicModifyIORef' booksRef $ \books ->
-            --     (books <> [Book ((bookId (last books)) + 1) author title], ())
+
+        post ("editBook" <//> var) $ \varId -> do
+            let varId' = read varId :: Integer
+            books' <- getState >>= (liftIO . readIORef . books)
+            author <- param' "author"
+            title <- param' "title"
+            booksRef <- books <$> getState
+            let book = Book varId' author title
+
+            liftIO $ atomicModifyIORef' booksRef $ \books ->
+                (update varId' book books', ())
             redirect "/"
         get ("addBook") $ lucid $ do
                 h2_ "New Book"
@@ -97,9 +117,18 @@ app = do
             liftIO $ atomicModifyIORef' booksRef $ \books ->
                 (books <> [Book ((bookId (last books)) + 1) author title], ())
             redirect "/"
+
+        get ("delete" <//> var) $ \varId -> do
+            let varId' = read varId :: Integer
+            books' <- getState >>= (liftIO . readIORef . books)
+            let theBook = findBookById varId' books'
+            booksRef <- books <$> getState
+            liftIO $ atomicModifyIORef' booksRef $ \books ->
+                (removeItem varId' books', ())
+            redirect "/"    
         get ("error") $ lucid $ do 
-            h1_ ("Error")
-        
+            h1_ ("Error")        
+
 
 main :: IO ()
 main = do 
