@@ -15,7 +15,7 @@ import Data.UUID
 import Data.UUID.V4
 import Data.Semigroup ((<>))
 import Data.IORef
-import Data.Text (Text)
+import Data.Text (Text, pack, append)
 
 -- data MySession = EmptySession
 -- data MyAppState = DummyAppState (IORef Int)
@@ -26,9 +26,15 @@ data Book = Book { bookId :: Integer, author :: Text, title :: Text }
 newtype ServerState = ServerState { books :: IORef [Book] }
 type Server serv = SpockM () () ServerState serv
 
+
+
+findBookById :: Integer -> [Book] -> Book
+findBookById i (x: xs)
+    | (bookId x) == i  = x
+    | otherwise = findBookById i xs
+
 newUUID :: IO UUID
 newUUID = randomIO
-
 
 app :: Server ()
 app = do 
@@ -47,9 +53,33 @@ app = do
                     toHtml (author book)
                     ":"
                     toHtml (title book)
-                    a_ [href_ "/", class_ "delete-button"] "" :: Html()
-                p_ "Helloooooooooooo!"
+                    a_ [href_ "/", class_ "button delete-button"] "" :: Html()
+                    a_ [href_ ( append "editBook/" ( pack (show (bookId book)))), class_ "button"] "+" :: Html()
                 a_ [ href_ "addBook"] "Add Books" :: Html ()
+        get ("editBook" <//> var) $ \varId -> do
+            books' <- getState >>= (liftIO . readIORef . books)
+            let varId' = read varId :: Integer
+            let theBook = findBookById varId' books'
+            lucid $ do
+                h1_ ( toHtml (title theBook))
+                form_ [ method_ "post" ] $ do
+                    input_ [ name_ "bookId", value_ (pack (show (bookId theBook))), style_ "opacity:0" ]
+                    label_ $ do 
+                        "Author: "
+                        input_ [name_ "author", value_ (author theBook)]
+                    label_ $ do 
+                        "Title: "
+                        input_ [name_ "title", value_ (title theBook)]
+                    input_ [ type_ "submit", value_ "Confirm"] 
+                a_ [ href_ "/"] "Books list" :: Html ()
+        post ("editBook") $ do
+            -- bookId <- param' "bookId"
+            -- author <- param' "author"
+            -- title <- param' "title"
+            -- booksRef <- books <$> getState
+            -- liftIO $ atomicModifyIORef' booksRef $ \books ->
+            --     (books <> [Book ((bookId (last books)) + 1) author title], ())
+            redirect "/"
         get ("addBook") $ lucid $ do
                 h2_ "New Book"
                 form_ [ method_ "post" ] $ do
@@ -67,6 +97,9 @@ app = do
             liftIO $ atomicModifyIORef' booksRef $ \books ->
                 (books <> [Book ((bookId (last books)) + 1) author title], ())
             redirect "/"
+        get ("error") $ lucid $ do 
+            h1_ ("Error")
+        
 
 main :: IO ()
 main = do 

@@ -1,11 +1,26 @@
-.delete-button {
-    border-radius: 5px;
-    background: #b34444;
+.button {
+    border-radius: 35px;
+    padding: 5px;
+    background: #545487;
+    box-sizing: border-box;
+    font-weight: bold;
+    text-align: center;
+    margin: 5px;
     color: white;
+}
+
+.delete-button {
+    background: #b34444;
     width: 35px;
     height: 35px;
-    text-align: center;
 }
+
 .delete-button::after {
     content:"X";
+}
+
+li {
+    padding: 5px;
+    margin-top: 10px;
+    border-bottom: #00000066 solid 1px;
 }
